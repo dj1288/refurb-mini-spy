@@ -2,8 +2,13 @@ name: Check Apple Refurbished Mac Minis and Studios
 
 on:
   schedule:
-    - cron: "2-59/5 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/check-refurb.yml"
+      - "check.ts"
+      - "lib/scrape.ts"
 
 permissions:
   contents: read
@@ -14,6 +19,7 @@ concurrency:
 
 jobs:
   check:
+    name: Check refurb inventory
     runs-on: ubuntu-latest
 
     steps:
