@@ -1,4 +1,5 @@
 export const MINI_URL = "https://www.apple.com/shop/refurbished/mac/mac-mini";
+export const STUDIO_URL = "https://www.apple.com/shop/refurbished/mac/mac-studio";
 
 export interface Offer {
   price?: string | number;
@@ -28,8 +29,8 @@ export async function fetchApplePage(url: string): Promise<string> {
   return res.text();
 }
 
-function isMacMini(name?: string): boolean {
-  return !!name && /mac\s*mini/i.test(name);
+function isTargetMac(name?: string): boolean {
+  return !!name && /(mac\s*mini|mac\s*studio)/i.test(name);
 }
 
 function extractFromJsonLd(html: string): Product[] {
@@ -40,7 +41,7 @@ function extractFromJsonLd(html: string): Product[] {
       const data = JSON.parse(match[1]);
       const items: Product[] = Array.isArray(data) ? data : [data];
       for (const item of items) {
-        if (item["@type"] === "Product" && isMacMini(item.name)) {
+        if (item["@type"] === "Product" && isMacMini(t.title)) {
           products.push(item);
         }
       }
@@ -90,7 +91,7 @@ function extractFromBootstrap(html: string): Product[] {
     const data = JSON.parse(match[1]);
     const tiles: BootstrapTile[] = data.tiles ?? [];
     return tiles
-      .filter((t) => isMacMini(t.title))
+      .filter((t) => isTargetMac(t.title))
       .map(tileToProduct);
   } catch {
     return [];
