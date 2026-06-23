@@ -1,0 +1,17 @@
+name: Test Slack Alert
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send test Slack message
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"Test alert from GitHub. If you see this on your phone, Mac refurb alerts are working."}' \
+          "$SLACK_WEBHOOK_URL"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
