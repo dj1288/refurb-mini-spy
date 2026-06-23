@@ -2,34 +2,41 @@ import {
   MINI_URL,
   STUDIO_URL,
   fetchApplePage,
-  extractMacMiniProducts,
+  extractTargetMacProducts,
   formatPrice,
   parseSpecsString,
   parseSpecsStructured,
   type Product,
 } from "./lib/scrape";
 
+const MIN_RAM_GB = 64;
+
 function getRamGB(product: Product): number {
   const specs = parseSpecsStructured(product.description);
   const ram = specs.ram.match(/(\d+)/);
 
-  return ram ? +ram[1] : 0;
+  return ram ? Number(ram[1]) : 0;
 }
 
 function meetsAlertCriteria(product: Product): boolean {
-  return getRamGB(product) >= 64;
+  return getRamGB(product) >= MIN_RAM_GB;
 }
 
 function buildSlackMessage(products: Product[]): { text: string } {
-  const lines = products.map((p) => {
-    const specs = parseSpecsString(p.description);
+  const lines = products.map((product) => {
+    const specs = parseSpecsString(product.description);
     const specLine = specs ? `\n   ${specs}` : "";
+    const linkLine = product.sku
+      ? `\n   SKU: ${product.sku}`
+      : "";
 
-    return `• *${formatPrice(p)}* — ${p.name}${specLine}`;
+    return `• *${formatPrice(product)}* — ${product.name}${specLine}${linkLine}`;
   });
 
   const text = [
-    `🚨 *${products.length} Mac Mini / Mac Studio model${products.length > 1 ? "s" : ""} with 64GB+ RAM spotted on Apple Refurbished!*`,
+    `🚨 *${products.length} Apple refurbished Mac Mini / Mac Studio model${
+      products.length > 1 ? "s" : ""
+    } with ${MIN_RAM_GB}GB+ RAM spotted!*`,
     "",
     ...lines,
     "",
@@ -44,14 +51,17 @@ async function notifySlack(message: { text: string }): Promise<void> {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
   if (!webhookUrl) {
-    console.log("SLACK_WEBHOOK_URL not set — skipping Slack notification");
-    console.log("Message that would be sent:", JSON.stringify(message, null, 2));
+    console.log("SLACK_WEBHOOK_URL not set. Skipping Slack notification.");
+    console.log("Message that would be sent:");
+    console.log(JSON.stringify(message, null, 2));
     return;
   }
 
   const res = await fetch(webhookUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(message),
   });
 
@@ -64,10 +74,10 @@ async function notifySlack(message: { text: string }): Promise<void> {
 
 async function fetchProductsFrom(url: string): Promise<Product[]> {
   const html = await fetchApplePage(url);
-  return extractMacMiniProducts(html);
+  return extractTargetMacProducts(html);
 }
 
-async function main() {
+async function main(): Promise<void> {
   console.log("Fetching Apple refurbished Mac Mini and Mac Studio pages...");
 
   const [miniProducts, studioProducts] = await Promise.all([
@@ -77,23 +87,24 @@ async function main() {
 
   const allProducts = [...miniProducts, ...studioProducts];
 
-  console.log(`Found ${miniProducts.length} Mac Mini(s)`);
-  console.log(`Found ${studioProducts.length} Mac Studio(s)`);
+  console.log(`Found ${miniProducts.length} Mac Mini model(s)`);
+  console.log(`Found ${studioProducts.length} Mac Studio model(s)`);
 
   const qualifyingProducts = allProducts.filter(meetsAlertCriteria);
-  const filtered = allProducts.length - qualifyingProducts.length;
+  const filteredCount = allProducts.length - qualifyingProducts.length;
 
-  if (filtered > 0) {
-    console.log(`Filtered out ${filtered} model(s) below 64GB RAM`);
-  }
+  console.log(`Filtered out ${filteredCount} model(s) below ${MIN_RAM_GB}GB RAM`);
 
   if (qualifyingProducts.length === 0) {
-    console.log("No qualifying Mac Mini / Mac Studio models found. Exiting.");
+    console.log(`No qualifying Mac Mini / Mac Studio models found with ${MIN_RAM_GB}GB+ RAM. Exiting.`);
     return;
   }
 
+  console.log(`Found ${qualifyingProducts.length} qualifying model(s):`);
+
   for (const product of qualifyingProducts) {
-    console.log(` → ${product.name} — ${formatPrice(product)}`);
+    const ramGB = getRamGB(product);
+    console.log(` → ${product.name} — ${formatPrice(product)} — ${ramGB}GB RAM`);
   }
 
   const message = buildSlackMessage(qualifyingProducts);
