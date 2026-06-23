@@ -18,15 +18,14 @@ function parseStorageGB(storage: string): number {
 }
 
 function meetsAlertCriteria(product: Product): boolean {
-  const { generation } = parseChip(product.name || "");
-  if (generation < 4) return false;
-
   const specs = parseSpecsStructured(product.description);
   const ram = specs.ram.match(/(\d+)/);
-  if (!ram || +ram[1] < 16) return false;
 
-  return parseStorageGB(specs.storage) >= 512;
+  if (!ram) return false;
+
+  return +ram[1] >= 64;
 }
+
 
 function buildSlackMessage(minis: Product[]): { text: string } {
   const lines = minis.map((p) => {
@@ -76,7 +75,7 @@ async function main() {
   const minis = allMinis.filter(meetsAlertCriteria);
   const filtered = allMinis.length - minis.length;
   if (filtered > 0) {
-    console.log(`Filtered out ${filtered} model(s) not meeting criteria (M4+, 16GB+, 512GB+)`);
+    console.log(`Filtered out ${filtered} model(s) below 64GB RAM`);
   }
 
   if (minis.length === 0) {
