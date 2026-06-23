@@ -1,28 +1,21 @@
-name: Check Apple Refurbished Mac Minis and Studios
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+name: Manual Refurb Check
 
 on:
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/check-refurb.yml"
-      - "check.ts"
-      - "lib/scrape.ts"
 
 permissions:
   contents: read
 
-concurrency:
-  group: check-refurb
-  cancel-in-progress: true
-
 jobs:
   check:
-    name: Check refurb inventory
+    name: Manual refurb inventory check
     runs-on: ubuntu-latest
 
     steps:
+      - name: Show trigger
+        run: echo "event=${{ github.event_name }}"
+
       - name: Checkout repo
         uses: actions/checkout@v4
 
