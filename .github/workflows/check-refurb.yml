@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: check-refurb
@@ -23,6 +23,7 @@ jobs:
         with:
           bun-version: latest
 
-      - run: bun run check.ts
+      - name: Check Apple refurbished inventory
+        run: bun run check.ts
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
